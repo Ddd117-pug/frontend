@@ -1,0 +1,130 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --mall-bg: linear-gradient(180deg, #fff8f1 0%, #fff7fb 38%, #f5fbff 100%);
+  --mall-card-bg: rgba(255, 255, 255, 0.92);
+  --mall-card-border: rgba(255, 255, 255, 0.86);
+  --mall-shadow: 0 22px 56px rgba(35, 34, 67, 0.08);
+  --mall-shadow-hover: 0 26px 52px rgba(255, 122, 101, 0.16);
+  --mall-text: #20243a;
+  --mall-subtext: #687083;
+  --mall-soft: #7f8698;
+  --mall-primary: linear-gradient(90deg, #ff5f95 0%, #ff9448 54%, #ffbf44 100%);
+  --mall-primary-solid: #ff6f7d;
+  --mall-soft-card: linear-gradient(135deg, #fff7ef 0%, #fff4f8 46%, #eefcff 100%);
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Microsoft YaHei", Arial, sans-serif;
+  background: var(--mall-bg);
+  background-attachment: fixed;
+  color: #333;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease, background 0.2s ease;
+}
+
+button:hover {
+  filter: brightness(1.02);
+}
+
+.container {
+  width: min(1200px, calc(100vw - 40px));
+  margin: 0 auto;
+}
+
+.card {
+  background: var(--mall-card-bg);
+  border-radius: 24px;
+  padding: 22px;
+  box-shadow: var(--mall-shadow);
+  border: 1px solid var(--mall-card-border);
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 16px;
+  color: var(--mall-text);
+}
+
+.mt16 {
+  margin-top: 16px;
+}
+
+.mb16 {
+  margin-bottom: 16px;
+}
+
+.mall-hover-lift {
+  transition: transform 0.24s ease, box-shadow 0.24s ease;
+}
+
+.mall-hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--mall-shadow-hover);
+}
+
+.mall-primary-button,
+.el-button--primary {
+  background: var(--mall-primary) !important;
+  border: none !important;
+  box-shadow: 0 14px 30px rgba(255, 117, 105, 0.2);
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 34px rgba(255, 117, 105, 0.24);
+}
+
+.el-loading-mask {
+  background-color: rgba(255, 250, 246, 0.74) !important;
+  backdrop-filter: blur(6px);
+}
+
+.el-loading-spinner .path {
+  stroke: var(--mall-primary-solid) !important;
+}
+
+.el-loading-spinner .el-loading-text {
+  color: #ff6f7d !important;
+  font-weight: 700;
+}
+
+.el-pagination.is-background .el-pager li:not(.disabled).active {
+  background: var(--mall-primary) !important;
+}
+
+@media (max-width: 768px) {
+  .container {
+    width: min(100vw - 24px, 1200px);
+  }
+
+  .card {
+    padding: 18px;
+    border-radius: 20px;
+  }
+}
