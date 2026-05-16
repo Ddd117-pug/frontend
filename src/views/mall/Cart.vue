@@ -37,8 +37,7 @@
                 <img :src="s.row.image" :alt="s.row.productName" class="cart-item__img" />
                 <div class="cart-item__info">
                   <div class="cart-item__title">{{ s.row.productName }}</div>
-                  <div class="cart-item__meta">{{ s.row.spec || '规格信息暂未返回' }}</div>
-                  <div class="cart-item__meta">库存：{{ s.row.stockText }}</div>
+                  <div class="cart-item__meta">{{ s.row.spec || '规格信息' }}</div>
                 </div>
               </div>
             </template>
@@ -156,7 +155,6 @@ export default {
           productName: item.productName || item.productTitle || item.goodsName || item.title || "商品",
           image: item.productPic || item.image || item.cover || item.picUrl || item.thumb || item.goodsImg || "",
           spec: item.styleOption || item.skuName || item.spec || item.skuDesc || "",
-          stockText: stock > 0 ? `剩余 ${stock}` : "库存未知",
           stockLimit: stock > 0 ? stock : undefined,
           num: quantity,
           price,

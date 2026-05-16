@@ -11,6 +11,7 @@ import ProductList from "../views/mall/ProductList.vue";
 import ProductDetail from "../views/mall/ProductDetail.vue";
 import Cart from "../views/mall/Cart.vue";
 import Orders from "../views/mall/Orders.vue";
+import Checkout from "../views/mall/Checkout.vue";
 import UserCenter from "../views/user/UserCenter.vue";
 import Addresses from "../views/user/Addresses.vue";
 import AdminDashboard from "../views/admin/Dashboard.vue";
@@ -54,6 +55,7 @@ const router = new Router({
         { path: "", component: Home },
         { path: "products", component: ProductList },
         { path: "product/:id", component: ProductDetail },
+        { path: "checkout", component: Checkout, meta: { auth: true } },
         { path: "cart", component: Cart, meta: { auth: true } },
         { path: "orders", component: Orders, meta: { auth: true } },
         { path: "profile", component: UserCenter, meta: { auth: true } },

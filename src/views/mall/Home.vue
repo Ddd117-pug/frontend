@@ -47,20 +47,6 @@
       @add-cart="addToCart"
     />
 
-    <HomeModuleSection
-      v-for="module in homeModules"
-      :key="module.key"
-      :chip="module.chip"
-      :title="module.title"
-      :badge="module.badge"
-      :items="module.items"
-      :loading="module.loading"
-      @more="() => goModule(module)"
-      @detail="goDetail"
-      @favorite="toggleFavorite"
-      @add-cart="addToCart"
-    />
-
     <HomeFooterBar />
   </div>
 </template>
@@ -132,7 +118,7 @@ export default {
     },
     bannerConfigs() {
       return this.homeConfigs
-        .filter(item => this.normalizeType(item.type) === "banner" && Number(item.status) === 1)
+        .filter(item => ["banner", "topic"].includes(this.normalizeType(item.type)) && Number(item.status) === 1)
         .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
         .map(item => ({
           ...item,
@@ -159,11 +145,11 @@ export default {
     },
     homeModules() {
       const modules = this.homeConfigs
-        .filter(item => this.normalizeType(item.type) === "module" && Number(item.status) === 1)
+        .filter(item => ["module", "brand", "category"].includes(this.normalizeType(item.type)) && Number(item.status) === 1)
         .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
         .map((item, index) => ({
           key: item.id,
-          chip: (item.title || "MODULE").slice(0, 16).toUpperCase(),
+          chip: this.moduleChip(item),
           title: item.title || `推荐模块 ${index + 1}`,
           badge: item.subtitle || "HOT",
           items: this.moduleItems(item),
@@ -171,12 +157,13 @@ export default {
           targetType: item.targetType,
           targetValue: item.targetValue,
           linkUrl: item.linkUrl,
-          categoryRoute: item.targetValue || item.linkUrl || ""
+          categoryRoute: item.targetValue || item.linkUrl || "",
+          moduleType: this.normalizeType(item.type)
         }));
       const fallback = [
-        { key: "hot", chip: "HOT FIGURES", title: "热门手办", badge: "HOT", items: this.hotFigures, loading: this.loading.hot, categoryRoute: "1" },
-        { key: "new", chip: "NEW ARRIVAL", title: "新品首发", badge: "NEW", items: this.newArrivals, loading: this.loading.new, categoryRoute: "2" },
-        { key: "box", chip: "BLIND BOX", title: "惊喜盲盒", badge: "BOX", items: this.blindBoxes, loading: this.loading.box, categoryRoute: "3" }
+        { key: "hot", chip: "热门手办", title: "热门手办", badge: "HOT", items: this.hotFigures, loading: this.loading.hot, categoryRoute: "1", moduleType: "module" },
+        { key: "new", chip: "新品首发", title: "新品首发", badge: "NEW", items: this.newArrivals, loading: this.loading.new, categoryRoute: "2", moduleType: "module" },
+        { key: "box", chip: "惊喜盲盒", title: "惊喜盲盒", badge: "BOX", items: this.blindBoxes, loading: this.loading.box, categoryRoute: "3", moduleType: "module" }
       ];
       return modules.length ? modules : fallback;
     }
@@ -337,13 +324,26 @@ export default {
       }
       this.goProducts();
     },
+    moduleChip(module) {
+      const type = this.normalizeType(module.type);
+      const map = { banner: "Banner", topic: "专题", module: "推荐模块", brand: "品牌推荐", category: "分类推荐" };
+      return map[type] || (module.title || "MODULE").slice(0, 16).toUpperCase();
+    },
     moduleItems(module) {
       const type = this.normalizeType(module.type);
       const text = `${module.title || ""} ${module.subtitle || ""} ${module.targetValue || ""}`.toLowerCase();
-      if (type === "module" && String(module.targetType || "").toLowerCase() === "brand") return this.brands;
+      if (type === "brand") return this.brands;
+      if (type === "category") return this.moduleCategoryItems(module);
       if (text.includes("盲盒")) return this.blindBoxes;
       if (text.includes("新品") || text.includes("new")) return this.newArrivals;
       if (text.includes("热门") || text.includes("hot")) return this.hotFigures;
+      return this.hotFigures;
+    },
+    moduleCategoryItems(module) {
+      const keywords = String(module.title || module.subtitle || module.targetValue || "").trim();
+      if (keywords.includes("新品")) return this.newArrivals;
+      if (keywords.includes("盲盒")) return this.blindBoxes;
+      if (keywords.includes("品牌")) return this.brands;
       return this.hotFigures;
     },
     goDetail(product) { this.$router.push(`/mall/product/${product.id}`); },

@@ -1,6 +1,9 @@
 <template>
   <section class="product-detail-page mall-surface-page" v-loading="loading">
     <div v-if="detail.id" class="detail-layout">
+      <div class="page-toolbar mall-hover-lift">
+        <el-button class="back-button" icon="el-icon-arrow-left" plain @click="goBack">返回上一页</el-button>
+      </div>
       <div class="gallery-panel mall-hover-lift">
         <div class="gallery-stage">
           <div class="thumb-rail">
@@ -24,12 +27,12 @@
 
       <div class="info-panel mall-hover-lift">
         <div class="info-topbar">
-          <span class="detail-chip">COLLECTOR SELECT</span>
-          <span v-if="isBlindBoxProduct" class="detail-chip detail-chip-blind">BLIND BOX</span>
+          <span class="detail-chip">商品详情</span>
+          <span v-if="isBlindBoxProduct" class="detail-chip detail-chip-blind">盲盒商品</span>
         </div>
 
         <h1 class="detail-title">{{ detail.name }}</h1>
-        <p class="detail-subtitle">{{ detail.subTitle || "精选潮玩收藏单品，适合展示、送礼与日常收藏。" }}</p>
+        <p class="detail-subtitle">{{ detail.subTitle || "商品详情" }}</p>
 
         <div class="price-card">
           <div>
@@ -55,7 +58,7 @@
             </div>
             <div class="selected-style-banner">
               <span class="selected-style-banner__label">当前已选</span>
-              <span class="selected-style-banner__value">{{ selectedStyleOption || '默认款式' }}</span>
+              <span class="selected-style-banner__value">{{ selectedStyleOption || '请选择款式' }}</span>
             </div>
             <div class="style-card-grid">
               <button
@@ -71,7 +74,7 @@
               </button>
             </div>
           </div>
-          <div v-else-if="isBlindBoxProduct" class="style-empty-tip">当前盲盒商品还没有配置购买选项，请先到后台补充款式描述。</div>
+          <div v-else-if="isBlindBoxProduct" class="style-empty-tip">当前商品暂未配置款式。</div>
           <div class="meta-row">
             <span class="meta-label">库存</span>
             <span class="meta-value">{{ detail.stock || 0 }}</span>
@@ -239,13 +242,17 @@ export default {
     },
     selectedStyleOption(value) {
       const suggestedCount = this.parseStyleOptionCount(value);
-      if (suggestedCount) {
-        this.buyCount = suggestedCount;
-      }
+      this.buyCount = suggestedCount || 1;
     },
     maxBuyCount(value) {
       if (this.buyCount > value) {
         this.buyCount = value;
+      }
+      if (this.selectedStyleIndex >= 0) {
+        const suggestedCount = this.parseStyleOptionCount(this.selectedStyleOption);
+        if (!suggestedCount || this.buyCount !== suggestedCount) {
+          this.buyCount = Math.min(this.buyCount || 1, value);
+        }
       }
     }
   },
@@ -309,6 +316,8 @@ export default {
         return;
       }
       this.selectedStyleIndex = index;
+      const suggestedCount = this.parseStyleOptionCount(option.title);
+      this.buyCount = suggestedCount || 1;
     },
     openPreview(image) {
       if (!image) return;
@@ -332,24 +341,13 @@ export default {
         this.$message.warning("当前库存不足，暂不支持当前款式购买");
         return;
       }
-      try {
-        const defaultAddress = await api.defaultAddress();
-        if (!defaultAddress || !defaultAddress.id) {
-          this.$message.warning("请先添加默认收货地址");
-          this.$router.push("/mall/addresses");
-          return;
-        }
-        await api.createDirectOrder({
-          productId: this.detail.id,
-          num: this.buyCount,
-          styleOption: this.selectedStyleOption || "",
-          payType: 1
-        });
-        this.$message.success(this.selectedStyleOption ? `已为你创建订单：${this.selectedStyleOption}` : "订单创建成功");
-        this.$router.push("/mall/orders");
-      } catch (e) {
-        this.$message.error(e?.message || "下单失败");
-      }
+      const query = {
+        productId: this.detail.id,
+        num: this.buyCount,
+        styleOption: this.selectedStyleOption || "",
+        source: "direct"
+      };
+      this.$router.push({ path: "/mall/checkout", query }).catch(() => {});
     },
     async toggleFavorite() {
       if (!requireLogin(this, "请先登录后再收藏")) return;
@@ -362,6 +360,13 @@ export default {
       await api.addFavorite(this.detail.id);
       this.isFavorite = true;
       this.$message.success("收藏成功");
+    },
+    goBack() {
+      if (window.history.length > 1) {
+        this.$router.back();
+        return;
+      }
+      this.$router.push("/mall/products");
     }
   }
 };
@@ -369,6 +374,12 @@ export default {
 
 <style scoped>
 .product-detail-page { display:grid; gap:22px; }
+.page-toolbar { display:flex; align-items:center; justify-content:flex-start; padding:18px 24px; border:1px solid var(--mall-card-border); border-radius:28px; background:var(--mall-card-bg); box-shadow:var(--mall-shadow); }
+.back-button { border-radius:999px; }
+
+@media (min-width: 1101px) {
+  .page-toolbar { grid-column: 1 / -1; }
+}
 .detail-layout { display:grid; grid-template-columns:minmax(420px, 0.92fr) minmax(420px, 1.08fr); gap:22px; align-items:start; }
 .gallery-panel,.info-panel,.detail-tabs { background:var(--mall-card-bg); border:1px solid var(--mall-card-border); border-radius:28px; box-shadow:var(--mall-shadow); padding:24px; }
 .gallery-panel { background:linear-gradient(180deg, rgba(255,250,252,0.96) 0%, rgba(255,255,255,0.98) 100%); }

@@ -48,8 +48,8 @@
       </div>
 
       <div v-if="loading" class="orders-empty">订单加载中...</div>
-      <div v-else-if="filteredOrders.length" class="orders-list">
-        <div v-for="order in filteredOrders" :key="order.id" class="order-card">
+      <div v-else-if="pagedOrders.length" class="orders-list">
+        <div v-for="order in pagedOrders" :key="order.id" class="order-card">
           <div class="order-card__head">
             <div class="order-card__meta">
               <span>{{ order.date }}</span>
@@ -66,9 +66,8 @@
             <div class="order-product">
               <img :src="order.image" :alt="order.title" class="order-product__img" />
               <div class="order-product__info">
-                <div class="order-product__title">{{ order.title || '商品信息暂未返回' }}</div>
-                <div class="order-product__sub">{{ order.spec || '规格信息暂未返回' }}</div>
-                <div class="order-product__sub">{{ order.guarantee }}</div>
+                <div class="order-product__title">{{ order.title || '商品名称' }}</div>
+                <div v-if="order.spec" class="order-product__sub">{{ order.spec }}</div>
                 <div class="order-product__mini-actions">
                   <el-button size="mini" :disabled="order.loading" @click="rebuyOrder(order)">再来一单</el-button>
                   <el-button size="mini" :disabled="order.loading || !canAfterSale(order)" @click="openAfterSaleDialog(order)">申请售后</el-button>
@@ -104,6 +103,17 @@
       </div>
 
       <div v-else class="orders-empty">暂无符合条件的订单</div>
+
+      <div v-if="!loading && filteredOrders.length" class="orders-pagination-wrap">
+        <el-pagination
+          background
+          layout="prev, pager, next, total, jumper"
+          :current-page="pageNum"
+          :page-size="pageSize"
+          :total="filteredOrders.length"
+          @current-change="handlePageChange"
+        />
+      </div>
     </div>
 
     <el-dialog title="订单详情" :visible.sync="orderDetailVisible" width="900px" top="4vh" @close="resetOrderDetail">
@@ -267,7 +277,9 @@ export default {
       reviewDialogVisible: false,
       reviewSubmitting: false,
       currentReviewOrder: null,
-      reviewForm: { rating: 5, content: "" }
+      reviewForm: { rating: 5, content: "" },
+      pageNum: 1,
+      pageSize: 6
     };
   },
   computed: {
@@ -282,6 +294,10 @@ export default {
       else if (this.sortValue === "oldest") list.sort((a, b) => a.timestamp - b.timestamp);
       else list.sort((a, b) => b.timestamp - a.timestamp);
       return list;
+    },
+    pagedOrders() {
+      const start = (this.pageNum - 1) * this.pageSize;
+      return this.filteredOrders.slice(start, start + this.pageSize);
     }
   },
   async created() {
@@ -335,9 +351,9 @@ export default {
         const quantity = Number(item.quantity ?? item.totalQuantity ?? firstItem.quantity ?? 1);
         const price = Number(item.unitPrice ?? item.price ?? firstItem.price ?? (quantity ? total / quantity : total) ?? 0);
         const paid = Number(item.paidAmount ?? item.payAmount ?? item.payTotal ?? total);
-        const title = firstItem.productName || firstItem.productTitle || firstItem.goodsName || firstItem.title || item.productName || item.productTitle || item.goodsName || item.title || "";
-        const image = firstItem.productPic || firstItem.image || firstItem.cover || firstItem.picUrl || firstItem.thumb || firstItem.goodsImg || item.productPic || item.image || item.cover || item.picUrl || item.thumb || item.goodsImg || "";
-        const spec = firstItem.styleOption || firstItem.skuName || firstItem.spec || item.spec || item.skuName || item.styleOption || "";
+        const title = item.productName || firstItem.productName || "商品";
+        const image = item.productPic || firstItem.productPic || "https://picsum.photos/seed/order/120/120";
+        const spec = item.styleOption || firstItem.styleOption || item.spec || firstItem.spec || "";
 
         return {
           id: item.id || item.orderId || item.orderNo || item.sn,
@@ -350,9 +366,9 @@ export default {
           statusText: item.statusText || item.orderStatusText || item.payStatusText || info.text,
           statusClass: item.statusClass || info.className,
           statusHint: item.remark || item.statusDesc || item.orderDesc || "订单详情可查看商品、物流与收货信息",
-          title: title || "商品",
+          title,
           spec,
-          guarantee: item.guarantee || "七天无理由退换 · 正品保障 · 快速发货",
+          guarantee: item.guarantee || "",
           image: image || "https://picsum.photos/seed/order/120/120",
           price,
           quantity,
@@ -381,7 +397,7 @@ export default {
     async loadOrders() {
       this.loading = true;
       try {
-        const res = await api.orderList({ pageNum: 1, pageSize: 50 });
+        const res = await api.orderList({ pageNum: 1, pageSize: 200 });
         const baseOrders = this.normalizeOrders(res);
         const enrichedOrders = await Promise.all(
           baseOrders.map(async (order) => {
@@ -412,6 +428,7 @@ export default {
           })
         );
         this.orders = enrichedOrders;
+        this.pageNum = 1;
         this.updateTabCounts();
       } catch (error) {
         this.orders = [];
@@ -426,6 +443,9 @@ export default {
         return acc;
       }, {});
       this.tabs = this.tabs.map((tab) => (tab.key === "all" ? { ...tab, count: this.orders.length } : { ...tab, count: counts[tab.key] || 0 }));
+    },
+    handlePageChange(page) {
+      this.pageNum = page;
     },
     async openOrderDetail(order) {
       this.orderDetailVisible = true;
@@ -1123,13 +1143,7 @@ export default {
   color: #8a94a6;
 }
 
-.orders-empty {
-  padding: 56px 0;
-  text-align: center;
-  color: #8b93a4;
-  font-size: 14px;
-}
-
+undefined
 @media (max-width: 1100px) {
   .orders-toolbar,
   .order-detail__grid {

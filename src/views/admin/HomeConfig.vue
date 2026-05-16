@@ -30,6 +30,8 @@
           <el-radio-button label="banner">Banner</el-radio-button>
           <el-radio-button label="module">模块</el-radio-button>
           <el-radio-button label="topic">专题</el-radio-button>
+          <el-radio-button label="brand">品牌推荐</el-radio-button>
+          <el-radio-button label="category">分类推荐</el-radio-button>
         </el-radio-group>
         <div class="toolbar-right">
           <el-input v-model="query" clearable prefix-icon="el-icon-search" placeholder="搜索标题 / 副标题 / 跳转值" @input="resetToFirstPage" />
@@ -80,6 +82,8 @@
             <el-option label="Banner" value="banner" />
             <el-option label="模块" value="module" />
             <el-option label="专题" value="topic" />
+            <el-option label="品牌推荐" value="brand" />
+            <el-option label="分类推荐" value="category" />
           </el-select>
         </el-form-item>
         <el-form-item label="标题" prop="title"><el-input v-model="form.title" placeholder="例如：春日上新 · 潮玩限定" /></el-form-item>
@@ -136,10 +140,17 @@ import { api } from '../../api';
 import { pushAdminLog } from '../../utils/adminLog';
 
 const emptyForm = () => ({ type: 'banner', title: '', subtitle: '', imageUrl: '', linkUrl: '', targetType: 'route', targetValue: '', sortOrder: 0, status: 1 });
+const TYPE_LABEL_MAP = {
+  banner: 'Banner',
+  module: '模块',
+  topic: '专题',
+  brand: '品牌推荐',
+  category: '分类推荐'
+};
 const demoConfigs = [
   { type: 'banner', title: '春日上新 · 潮玩限定', subtitle: '首页大图轮播位，支持跳转到商品详情页。', imageUrl: '/images/banners/banner1.jpg', linkUrl: '/mall/product/43', targetType: 'product', targetValue: '43', sortOrder: 1, status: 1 },
   { type: 'banner', title: '收藏热榜 · 本周推荐', subtitle: '为热卖商品单独开一个运营位，提升转化。', imageUrl: '/images/banners/banner2.jpg', linkUrl: '/mall/products?tab=hot', targetType: 'route', targetValue: '/mall/products?tab=hot', sortOrder: 2, status: 1 },
-  { type: 'module', title: '品牌推荐区', subtitle: '首页品牌专区，前台可根据配置展示不同模块。', imageUrl: '/images/banners/banner3.jpg', linkUrl: '/mall/brands', targetType: 'route', targetValue: '/mall/brands', sortOrder: 3, status: 1 }
+  { type: 'brand', title: '品牌推荐区', subtitle: '首页品牌专区，前台可根据配置展示品牌区块。', imageUrl: '/images/banners/banner3.jpg', linkUrl: '/mall/brands', targetType: 'route', targetValue: '/mall/brands', sortOrder: 3, status: 1 }
 ];
 
 export default {
@@ -222,7 +233,7 @@ export default {
       if (this.$refs.formRef) this.$refs.formRef.clearValidate();
     },
     typeLabel(type) {
-      const map = { banner: 'Banner', module: '模块', topic: '专题', all: '全部' };
+      const map = { ...TYPE_LABEL_MAP, all: '全部' };
       return map[type] || type || '未分类';
     },
     targetLabel(row) {
