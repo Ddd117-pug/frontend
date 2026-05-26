@@ -242,6 +242,16 @@ const STATUS_MAP = {
 
 export default {
   name: "Orders",
+  props: {
+    embeddedInUserCenter: {
+      type: Boolean,
+      default: false
+    },
+    onRefundClick: {
+      type: Function,
+      default: null
+    }
+  },
   data() {
     return {
       loading: false,
@@ -552,6 +562,12 @@ export default {
       if (action === "去评价") return this.openReviewDialog(order);
       return this.$message.info(`${action} 功能暂未接入`);
     },
+    emitRefundClick(order) {
+      if (typeof this.onRefundClick === "function") {
+        this.onRefundClick(order);
+      }
+      this.$emit("go-refund", order);
+    },
     openPayDialog(order) {
       this.currentPayOrder = order;
       this.selectedPayType = 0;
@@ -614,6 +630,11 @@ export default {
       }
     },
     openAfterSaleDialog(order) {
+      if (this.embeddedInUserCenter && typeof this.onRefundClick === "function") {
+        this.onRefundClick(order);
+        this.$emit("go-refund", order);
+        return;
+      }
       this.currentAfterSaleOrder = order;
       this.afterSaleReason = "";
       this.afterSaleType = "refund";

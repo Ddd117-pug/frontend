@@ -124,7 +124,7 @@
                 <div class="refund-item__top">
                   <div>
                     <div class="refund-order-no">订单号：{{ item.orderNo }}</div>
-                    <div class="refund-order-time">申请时间：{{ formatOrderTime(item.createdAt || item.appliedAt) }}</div>
+                    <div class="refund-order-time">申请时间：{{ formatOrderTime(item.createdAt) }}</div>
                   </div>
                   <el-tag :type="afterSaleTagType(item.status)">{{ afterSaleStatusText(item.status) }}</el-tag>
                 </div>
@@ -245,7 +245,7 @@ export default {
     return {
       activeMenu: "profile", profileForm: emptyProfile(), passwordForm: emptyPassword(), phoneEditable: false, cancelLoading: false, rechargeDialogVisible: false, rechargeLoading: false, rechargeAmount: "", rechargeMethod: "wechat", quickRechargeOptions: [50, 100, 200, 500], rechargeMethods: [{ value: "wechat", label: "微信支付", desc: "使用微信方式完成余额充值" }, { value: "alipay", label: "支付宝", desc: "使用支付宝方式完成余额充值" }],
       pointsDialogVisible: false, pointsExchangeLoading: false, exchangePoints: "",
-      afterSales: [], refundOrders: [], refundSubmittingId: null, applyingOrderId: null, afterSaleReason: "", afterSaleDialogVisible: false, currentAfterSaleOrder: null,
+      afterSales: [], refundOrders: [], refundSubmittingId: null, applyingOrderId: null, afterSaleReason: "", afterSaleDialogVisible: false, currentAfterSaleOrder: null, refundOrderIdFromRoute: null,
       menus: [
         { key: "profile", label: "基本信息", icon: "👤" }, { key: "password", label: "修改密码", icon: "🔒" },
         { key: "address", label: "管理收货地址", icon: "📍" }, { key: "favorite", label: "我的收藏", icon: "💖" },
@@ -324,6 +324,9 @@ export default {
       if (target) {
         this.openAfterSaleDialog(target);
         sessionStorage.removeItem("mall-refund-order-id");
+        const nextQuery = { ...this.$route.query };
+        delete nextQuery.orderId;
+        this.$router.replace({ path: this.$route.path, query: nextQuery }).catch(() => {});
       }
     },
     async loadProfile() {
@@ -347,6 +350,9 @@ export default {
     afterSaleTagType(status) {
       return ({ 0: "warning", 1: "", 2: "danger", 3: "success" })[Number(status)] || "info";
     },
+    formatOrderTime(value) {
+      return value ? String(value).replace("T", " ").slice(0, 16) : "-";
+    },
     openAfterSaleDialog(order) {
       this.currentAfterSaleOrder = order;
       this.afterSaleReason = "";
@@ -358,20 +364,20 @@ export default {
         query.orderId = order.id;
         sessionStorage.setItem("mall-refund-order-id", String(order.id));
       }
-      const targetUrl = `${window.location.origin}/mall/profile?tab=refund${order && order.id ? `&orderId=${order.id}` : ""}&t=${query.t}`;
       this.activeMenu = "refund";
-      this.$nextTick(() => {
-        if (order) {
-          this.openAfterSaleDialog(order);
-        }
-      });
+      const navigateAndOpen = () => {
+        this.$nextTick(() => {
+          this.syncMenuFromRoute();
+          this.openRefundDialogFromRoute();
+        });
+      };
       if (this.$route.path === "/mall/profile") {
-        this.$router.replace({ path: "/mall/profile", query }).catch(() => {
-          window.location.assign(targetUrl);
+        this.$router.replace({ path: "/mall/profile", query }).then(navigateAndOpen).catch(() => {
+          window.location.href = `${window.location.origin}/mall/profile?tab=refund${order && order.id ? `&orderId=${order.id}` : ""}&t=${query.t}`;
         });
         return;
       }
-      window.location.assign(targetUrl);
+      window.location.href = `${window.location.origin}/mall/profile?tab=refund${order && order.id ? `&orderId=${order.id}` : ""}&t=${query.t}`;
     },
     async openAfterSaleOrderDetail(orderId) {
       try {

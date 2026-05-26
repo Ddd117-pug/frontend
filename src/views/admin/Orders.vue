@@ -40,6 +40,8 @@
                   <el-option label="已发货" :value="2" />
                   <el-option label="已完成" :value="3" />
                   <el-option label="已取消" :value="4" />
+                  <el-option label="售后中" :value="5" />
+                  <el-option label="已退款" :value="6" />
                 </el-select>
               </el-form-item>
               <el-form-item>
@@ -79,7 +81,7 @@
               <p>可优先筛选待审核申请，再查看订单明细辅助审核。</p>
             </div>
             <div class="after-sale-toolbar__actions">
-              <el-select v-model="afterSaleStatusFilter" size="small" class="after-sale-filter" placeholder="全部状态">
+              <el-select v-model="afterSaleStatusFilter" size="small" class="after-sale-filter" placeholder="全部状态" @change="handleAfterSaleStatusChange">
                 <el-option label="全部状态" :value="-1" />
                 <el-option label="待审核" :value="0" />
                 <el-option label="已通过" :value="1" />
@@ -90,12 +92,12 @@
             </div>
           </div>
 
-          <el-table :data="filteredAfterSales" border stripe v-loading="loading" empty-text="暂无售后数据">
+          <el-table :data="pagedAfterSales" border stripe v-loading="loading" empty-text="暂无售后数据">
             <el-table-column prop="orderNo" label="订单号" min-width="180" />
             <el-table-column prop="userId" label="用户ID" width="90" />
             <el-table-column prop="reason" label="退款原因" min-width="220" show-overflow-tooltip />
             <el-table-column label="申请时间" width="168">
-              <template slot-scope="s">{{ formatTime(s.row.appliedAt || s.row.createdAt) }}</template>
+              <template slot-scope="s">{{ formatTime(s.row.createdAt) }}</template>
             </el-table-column>
             <el-table-column label="审核时间" width="168">
               <template slot-scope="s">{{ formatTime(s.row.auditedAt) }}</template>
@@ -112,6 +114,9 @@
               </template>
             </el-table-column>
           </el-table>
+          <div class="pagination-wrap">
+            <el-pagination background layout="total, prev, pager, next, jumper" :total="afterSaleTotal" :page-size="afterSalePageSize" :current-page.sync="afterSalePage" @current-change="handleAfterSalePageChange" />
+          </div>
         </el-card>
       </el-tab-pane>
     </el-tabs>
@@ -231,6 +236,9 @@ export default {
       orderQuery: { keyword: "", status: null },
       orderPage: 1,
       orderPageSize: 10,
+      afterSalePage: 1,
+      afterSalePageSize: 10,
+      afterSaleTotal: 0,
       afterSaleStatusFilter: -1,
       auditDialogVisible: false,
       currentAfterSale: null,
@@ -251,6 +259,7 @@ export default {
         return [item.orderNo, item.userId, item.receiverName, item.receiverPhone].join(" ").toLowerCase().includes(kw);
       });
     },
+
     pagedOrders() {
       const start = (this.orderPage - 1) * this.orderPageSize;
       return this.filteredOrders.slice(start, start + this.orderPageSize);
@@ -258,6 +267,10 @@ export default {
     filteredAfterSales() {
       if (this.afterSaleStatusFilter === -1) return this.afterSales;
       return this.afterSales.filter(item => Number(item.status) === Number(this.afterSaleStatusFilter));
+    },
+    pagedAfterSales() {
+      const start = (this.afterSalePage - 1) * this.afterSalePageSize;
+      return this.filteredAfterSales.slice(start, start + this.afterSalePageSize);
     },
     orderStatCards() {
       const total = this.list.length;
@@ -288,10 +301,11 @@ export default {
         this.loading = false;
       }
     },
-    text(s){return ({0:"待支付",1:"已支付",2:"已发货",3:"已完成",4:"已取消"})[Number(s)]||"-";},
-    orderStatusType(status) { return ({ 0: "warning", 1: "primary", 2: "success", 3: "success", 4: "info" })[Number(status)] || "info"; },
+    text(s){return ({0:"待支付",1:"已支付",2:"已发货",3:"已完成",4:"已取消",5:"售后中",6:"已退款"})[Number(s)]||"-";},
+    orderStatusType(status) { return ({ 0: "warning", 1: "primary", 2: "success", 3: "success", 4: "info", 5: "warning", 6: "success" })[Number(status)] || "info"; },
     afterSaleText(s){return ({0:"待审核",1:"已通过",2:"已驳回",3:"已退款"})[Number(s)]||"-";},
     afterSaleTagType(status) { return ({ 0: "warning", 1: "success", 2: "info", 3: "success" })[Number(status)] || "info"; },
+
     formatTime(value) { return value ? String(value).replace("T", " ").slice(0, 16) : "-"; },
     money(value) { const n = Number(value || 0); return Number.isNaN(n) ? "0.00" : n.toFixed(2); },
     async loadOrders(){
@@ -299,7 +313,17 @@ export default {
       this.list = Array.isArray(res) ? res : res?.records || [];
       this.orderPage = Math.min(this.orderPage, Math.max(Math.ceil(this.filteredOrders.length / this.orderPageSize), 1));
     },
-    async loadAfterSales(){ const res = await api.adminAfterSales(); this.afterSales = Array.isArray(res) ? res : res?.records || []; },
+    async loadAfterSales(){
+      const res = await api.adminAfterSales({ pageNum: this.afterSalePage, pageSize: this.afterSalePageSize, status: this.afterSaleStatusFilter === -1 ? undefined : this.afterSaleStatusFilter });
+      const payload = res?.data || res || {};
+      const records = Array.isArray(payload.records) ? payload.records : [];
+      this.afterSales = records;
+      this.afterSaleTotal = payload.total ?? records.length;
+      if (!this.afterSales.length && this.afterSalePage > 1 && this.afterSaleTotal > 0) {
+        this.afterSalePage = 1;
+        return this.loadAfterSales();
+      }
+    },
     syncOrderPage(page) { this.orderPage = page; },
     resetOrderQuery() { this.orderQuery = { keyword: "", status: null }; this.orderPage = 1; this.loadOrders(); },
     async confirmShip(r){
@@ -370,16 +394,19 @@ export default {
       ];
     },
     openAudit(row, mode){ this.currentAfterSale = row; this.auditMode = mode; this.auditReply = ""; this.auditDialogVisible = true; },
+    handleAfterSalePageChange(page) { this.afterSalePage = page; this.loadAfterSales(); },
+    handleAfterSaleStatusChange() { this.afterSalePage = 1; this.loadAfterSales(); },
     async submitAudit(){
       if(!this.currentAfterSale) return;
       if(this.auditMode === "reject" && !String(this.auditReply || "").trim()) return this.$message.warning("请输入驳回原因");
       this.auditLoading = true;
       try {
-        if(this.auditMode === "approve") await api.adminApproveAfterSale(this.currentAfterSale.id, { reply: this.auditReply });
-        else await api.adminRejectAfterSale(this.currentAfterSale.id, { reply: this.auditReply });
+        if(this.auditMode === "approve") await api.adminApproveAfterSale(this.currentAfterSale.id);
+        else await api.adminRejectAfterSale(this.currentAfterSale.id, this.auditReply);
         pushAdminLog({ module: "afterSale", action: this.auditMode === "approve" ? "approve" : "reject", content: `${this.auditMode === "approve" ? "通过" : "驳回"}售后申请【${this.currentAfterSale.orderNo || this.currentAfterSale.id}】`, target: this.currentAfterSale.orderNo || String(this.currentAfterSale.id), risky: this.auditMode === "reject", meta: { afterSaleId: this.currentAfterSale.id, reply: this.auditReply } });
         this.$message.success(this.auditMode === "approve" ? "售后申请已通过并完成退款" : "售后申请已驳回");
         this.auditDialogVisible = false;
+        this.afterSalePage = 1;
         await this.loadAll();
       } finally {
         this.auditLoading = false;
@@ -401,7 +428,7 @@ export default {
       URL.revokeObjectURL(url);
     },
     exportAfterSales() {
-      const rows = this.filteredAfterSales.map(item => [item.orderNo, item.userId, item.reason, this.afterSaleText(item.status), this.formatTime(item.appliedAt || item.createdAt), this.formatTime(item.auditedAt), item.reply || ""]);
+      const rows = this.filteredAfterSales.map(item => [item.orderNo, item.userId, item.reason, this.afterSaleText(item.status), this.formatTime(item.createdAt), this.formatTime(item.auditedAt), item.reply || ""]);
       const csv = [["订单号", "用户ID", "原因", "状态", "申请时间", "审核时间", "处理意见"], ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
       const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
