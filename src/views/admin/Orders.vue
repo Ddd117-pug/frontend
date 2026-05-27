@@ -406,8 +406,10 @@ export default {
         pushAdminLog({ module: "afterSale", action: this.auditMode === "approve" ? "approve" : "reject", content: `${this.auditMode === "approve" ? "通过" : "驳回"}售后申请【${this.currentAfterSale.orderNo || this.currentAfterSale.id}】`, target: this.currentAfterSale.orderNo || String(this.currentAfterSale.id), risky: this.auditMode === "reject", meta: { afterSaleId: this.currentAfterSale.id, reply: this.auditReply } });
         this.$message.success(this.auditMode === "approve" ? "售后申请已通过并完成退款" : "售后申请已驳回");
         this.auditDialogVisible = false;
+        this.currentAfterSale = null;
+        this.auditReply = "";
         this.afterSalePage = 1;
-        await this.loadAll();
+        await this.loadAfterSales();
       } finally {
         this.auditLoading = false;
       }
