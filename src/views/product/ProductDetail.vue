@@ -28,7 +28,6 @@
       <div class="info-panel mall-hover-lift">
         <div class="info-topbar">
           <span class="detail-chip">商品详情</span>
-          <span v-if="isBlindBoxProduct" class="detail-chip detail-chip-blind">盲盒商品</span>
         </div>
 
         <h1 class="detail-title">{{ detail.name }}</h1>
@@ -74,7 +73,7 @@
               </button>
             </div>
           </div>
-          <div v-else-if="isBlindBoxProduct" class="style-empty-tip">当前商品暂未配置款式。</div>
+          <div v-else class="style-empty-tip">当前商品暂未配置款式。</div>
           <div class="meta-row">
             <span class="meta-label">库存</span>
             <span class="meta-value">{{ detail.stock || 0 }}</span>
@@ -134,7 +133,7 @@
             <div class="param-item"><span>库存</span><strong>{{ detail.stock || 0 }}</strong></div>
             <div class="param-item"><span>销量</span><strong>{{ detail.saleCount || 0 }}</strong></div>
             <div v-if="categoryName" class="param-item"><span>所属分类</span><strong>{{ categoryName }}</strong></div>
-            <div v-if="isBlindBoxProduct && detail.styleDesc && !isDisplayCategory" class="param-item"><span>款式描述</span><strong>{{ detail.styleDesc }}</strong></div>
+            <div v-if="detail.styleDesc && !isDisplayCategory" class="param-item"><span>款式描述</span><strong>{{ detail.styleDesc }}</strong></div>
           </div>
         </el-tab-pane>
 
@@ -212,9 +211,6 @@ export default {
     categoryName() {
       const current = this.categories.find(item => Number(item.id) === Number(this.detail.categoryId));
       return current ? current.name : "";
-    },
-    isBlindBoxProduct() {
-      return Number(this.detail.isBlindBox) === 1;
     },
     styleOptions() {
       return String(this.detail.styleDesc || "")

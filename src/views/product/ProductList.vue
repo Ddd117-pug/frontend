@@ -105,15 +105,15 @@ export default {
       return !!this.activeBrandId;
     },
     pageTitle() {
-      if (this.isBrandMode) return this.brandName || "品牌商品";
+      if (this.isBrandMode) return this.brandName || "IP 商品";
       return this.activeCategoryName;
     },
     sidebarTitle() {
-      return this.isBrandMode ? "品牌筛选" : "商品分类";
+      return this.isBrandMode ? "IP 筛选" : "商品分类";
     },
     sidebarSubtitle() {
       return this.isBrandMode
-        ? `当前品牌：${this.brandName || this.activeBrandId}`
+        ? `当前 IP：${this.brandName || this.activeBrandId}`
         : "浏览分类并快速切换相关商品";
     }
   },

@@ -1,22 +1,20 @@
 const TAB_ALL = "all";
-const TAB_HOT_IP = "hot-ip";
+const TAB_HOT_PRODUCT = "hot-product";
 const TAB_NEW_MONTH = "new-month";
 const TAB_PLUSH = "plush";
 const TAB_ACCESSORY = "accessory";
 const TAB_FIGURE = "figure";
 const TAB_BLOCKS = "blocks";
-const TAB_BLIND_BOX = "blind-box";
 const TAB_DISPLAY = "display";
 
 export const PRODUCT_CATEGORY_TABS = [
   { key: TAB_ALL, label: "全部商品" },
-  { key: TAB_HOT_IP, label: "热门IP" },
+  { key: TAB_HOT_PRODUCT, label: "热门商品" },
   { key: TAB_NEW_MONTH, label: "当月新品" },
   { key: TAB_PLUSH, label: "治愈毛绒" },
   { key: TAB_ACCESSORY, label: "时髦挂饰" },
   { key: TAB_FIGURE, label: "潮玩手办" },
   { key: TAB_BLOCKS, label: "拼搭积木" },
-  { key: TAB_BLIND_BOX, label: "随机盲盒" },
   { key: TAB_DISPLAY, label: "收纳展示" }
 ];
 

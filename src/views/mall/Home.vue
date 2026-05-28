@@ -11,7 +11,7 @@
         <div>
           <div class="config-banner-section__chip">HOME CONFIG</div>
           <h2 class="config-banner-section__title">首页运营位</h2>
-          <p class="config-banner-section__desc">后台维护的 Banner 与专题配置会实时同步到前台首页。</p>
+          <p class="config-banner-section__desc">后台维护的 Banner、专题与热门商品配置会实时同步到前台首页。</p>
         </div>
         <button class="config-banner-section__more" @click="goProducts">去逛逛</button>
       </div>
@@ -89,7 +89,7 @@ const DEFAULT_SLIDES = [
     id: 3,
     tag: "CRAYON SHINCHAN",
     title: "蜡笔小新 POP CUBE-2 系列",
-    desc: "方块造型趣味十足，适合陈列展示与盲抽收藏，是首页热卖推荐款之一。",
+    desc: "方块造型趣味十足，适合陈列展示与趣味收藏，是首页热卖推荐款之一。",
     background: "linear-gradient(135deg, #ff9966 0%, #ffc363 48%, #ffe6a1 100%)",
     image: "/images/banners/banner3.jpg",
     imageClass: "focus-top",
@@ -107,9 +107,8 @@ export default {
       brands: [],
       hotFigures: [],
       newArrivals: [],
-      blindBoxes: [],
       homeConfigs: [],
-      loading: { brands: false, hot: false, new: false, box: false, config: false }
+      loading: { brands: false, hot: false, new: false, config: false }
     };
   },
   computed: {
@@ -161,9 +160,8 @@ export default {
           moduleType: this.normalizeType(item.type)
         }));
       const fallback = [
-        { key: "hot", chip: "热门手办", title: "热门手办", badge: "HOT", items: this.hotFigures, loading: this.loading.hot, categoryRoute: "1", moduleType: "module" },
-        { key: "new", chip: "新品首发", title: "新品首发", badge: "NEW", items: this.newArrivals, loading: this.loading.new, categoryRoute: "2", moduleType: "module" },
-        { key: "box", chip: "惊喜盲盒", title: "惊喜盲盒", badge: "BOX", items: this.blindBoxes, loading: this.loading.box, categoryRoute: "3", moduleType: "module" }
+        { key: "hot", chip: "热门商品", title: "热门商品", badge: "HOT", items: this.hotFigures, loading: this.loading.hot, categoryRoute: "1", moduleType: "module" },
+        { key: "new", chip: "新品首发", title: "新品首发", badge: "NEW", items: this.newArrivals, loading: this.loading.new, categoryRoute: "2", moduleType: "module" }
       ];
       return modules.length ? modules : fallback;
     }
@@ -186,17 +184,16 @@ export default {
       await this.loadHomeConfigs();
     },
     async loadHomeData() {
-      this.loading = { brands: true, hot: true, new: true, box: true, config: true };
+      this.loading = { brands: true, hot: true, new: true, config: true };
       try {
         const requests = [
           api.homeConfig(),
           api.brands(),
           api.productList({ pageNum: 1, pageSize: 4, sortBy: "saleCount", sortOrder: "desc" }),
           api.productList({ pageNum: 1, pageSize: 4, sortBy: "createdAt", sortOrder: "desc" }),
-          api.productList({ pageNum: 1, pageSize: 4, keyword: "盲盒", sortBy: "saleCount", sortOrder: "desc" })
         ];
         if (this.$store.getters.isLogin) requests.push(api.favoriteList());
-        const [configRes, brandsRes, hotRes, newRes, boxRes, favorites = []] = await Promise.all(requests);
+        const [configRes, brandsRes, hotRes, newRes, favorites = []] = await Promise.all(requests);
         const favoriteIds = new Set((favorites || []).map(item => item.id));
         const rawConfigs = Array.isArray(configRes) ? configRes : configRes?.data || configRes?.records || [];
         this.homeConfigs = rawConfigs.map(item => ({
@@ -212,9 +209,8 @@ export default {
         this.brands = Array.isArray(brandsRes) ? brandsRes.slice(0, 6) : brandsRes?.records?.slice?.(0, 6) || [];
         this.hotFigures = this.decorateProducts(hotRes.records || hotRes?.data?.records || [], favoriteIds);
         this.newArrivals = this.decorateProducts(newRes.records || newRes?.data?.records || [], favoriteIds);
-        this.blindBoxes = this.decorateProducts(boxRes.records || boxRes?.data?.records || [], favoriteIds);
       } finally {
-        this.loading = { brands: false, hot: false, new: false, box: false, config: false };
+        this.loading = { brands: false, hot: false, new: false, config: false };
       }
     },
     async loadHomeConfigs() {
@@ -235,7 +231,7 @@ export default {
       return list.map(item => ({ ...item, isFavorite: favoriteIds.has(item.id) }));
     },
     updateProductState(productId, updater) {
-      ["hotFigures", "newArrivals", "blindBoxes"].forEach(key => {
+      ["hotFigures", "newArrivals"].forEach(key => {
         this[key] = this[key].map(item => (item.id === productId ? updater(item) : item));
       });
     },
@@ -326,7 +322,7 @@ export default {
     },
     moduleChip(module) {
       const type = this.normalizeType(module.type);
-      const map = { banner: "Banner", topic: "专题", module: "推荐模块", brand: "品牌推荐", category: "分类推荐" };
+      const map = { banner: "Banner", topic: "专题", module: "推荐模块", brand: "热门商品", category: "分类推荐" };
       return map[type] || (module.title || "MODULE").slice(0, 16).toUpperCase();
     },
     moduleItems(module) {
@@ -334,7 +330,6 @@ export default {
       const text = `${module.title || ""} ${module.subtitle || ""} ${module.targetValue || ""}`.toLowerCase();
       if (type === "brand") return this.brands;
       if (type === "category") return this.moduleCategoryItems(module);
-      if (text.includes("盲盒")) return this.blindBoxes;
       if (text.includes("新品") || text.includes("new")) return this.newArrivals;
       if (text.includes("热门") || text.includes("hot")) return this.hotFigures;
       return this.hotFigures;
@@ -342,8 +337,7 @@ export default {
     moduleCategoryItems(module) {
       const keywords = String(module.title || module.subtitle || module.targetValue || "").trim();
       if (keywords.includes("新品")) return this.newArrivals;
-      if (keywords.includes("盲盒")) return this.blindBoxes;
-      if (keywords.includes("品牌")) return this.brands;
+      if (keywords.includes("品牌") || keywords.includes("IP")) return this.brands;
       return this.hotFigures;
     },
     goDetail(product) { this.$router.push(`/mall/product/${product.id}`); },

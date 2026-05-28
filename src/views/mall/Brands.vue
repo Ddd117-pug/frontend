@@ -2,18 +2,18 @@
   <section class="brand-gallery-page mall-surface-page">
     <div class="brand-hero mall-hover-lift">
       <div>
-        <div class="brand-chip">BRANDS</div>
-        <h1 class="brand-title">品牌馆</h1>
-        <p class="brand-subtitle">浏览品牌并进入对应商品列表。</p>
+        <div class="brand-chip">IP</div>
+        <h1 class="brand-title">IP馆</h1>
+        <p class="brand-subtitle">浏览 IP 并进入对应商品列表。</p>
         <div class="brand-stats">
-          <span class="brand-stat">共 {{ totalBrands }} 个品牌</span>
-          <span class="brand-stat brand-stat--accent">当前显示 {{ visibleBrands.length }} 个品牌</span>
+          <span class="brand-stat">共 {{ totalBrands }} 个 IP</span>
+          <span class="brand-stat brand-stat--accent">当前显示 {{ visibleBrands.length }} 个 IP</span>
         </div>
       </div>
       <el-input
         v-model="keyword"
         clearable
-        placeholder="搜索品牌名称"
+        placeholder="搜索 IP 名称"
         class="brand-search"
         @input="filterBrands"
       >
@@ -25,17 +25,17 @@
       <article v-for="brand in visibleBrands" :key="brand.id" class="brand-card mall-hover-lift" @click="goBrandProducts(brand)">
         <div class="brand-logo-wrap">
           <img v-if="brand.logo" :src="resolveAssetUrl(brand.logo)" :alt="brand.name" class="brand-logo" />
-          <div v-else class="brand-logo-fallback">{{ brand.name ? brand.name.charAt(0) : 'B' }}</div>
+          <div v-else class="brand-logo-fallback">{{ brand.name ? brand.name.charAt(0) : 'I' }}</div>
         </div>
         <div class="brand-card__body">
           <h3 class="brand-name">{{ brand.name }}</h3>
-          <p class="brand-desc">{{ brand.description || '潮玩收藏品牌' }}</p>
+          <p class="brand-desc">{{ brand.description || '潮玩收藏 IP' }}</p>
           <span class="brand-count">{{ brand.productCount || 0 }} 件商品</span>
         </div>
       </article>
     </div>
 
-    <el-empty v-if="!loading && !visibleBrands.length" description="没有找到匹配的品牌" />
+    <el-empty v-if="!loading && !visibleBrands.length" description="没有找到匹配的 IP" />
   </section>
 </template>
 

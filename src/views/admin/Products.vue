@@ -5,7 +5,7 @@
         <div>
           <div class="hero-badge">PRODUCT OPS</div>
           <h2 class="hero-title">商品管理</h2>
-          <p class="hero-desc">支持商品新增、编辑、上下架、删除、按品牌筛选，并在列表与详情中联动展示品牌信息，满足完整后台商品管理场景。</p>
+          <p class="hero-desc">支持商品新增、编辑、上下架、删除、按 IP 筛选，并在列表与详情中联动展示 IP 信息，满足完整后台商品管理场景。</p>
         </div>
         <div class="hero-actions">
           <el-button @click="categoryDialogVisible = true">分类管理</el-button>
@@ -26,7 +26,7 @@
       <div class="panel-toolbar">
         <div class="panel-title-block">
           <h3>筛选与检索</h3>
-          <p>支持按商品名、分类、品牌与状态查询。</p>
+          <p>支持按商品名、分类、IP 与状态查询。</p>
         </div>
         <el-form :inline="true" :model="query" class="query-form" @submit.native.prevent="load">
           <el-form-item><el-input v-model="query.keyword" placeholder="搜索商品名 / 副标题" clearable @keyup.enter.native="load" /></el-form-item>
@@ -36,7 +36,7 @@
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-select v-model="query.brandId" clearable placeholder="品牌" @change="load">
+            <el-select v-model="query.brandId" clearable placeholder="IP" @change="load">
               <el-option v-for="item in brands" :key="item.id" :label="item.name" :value="item.id" />
             </el-select>
           </el-form-item>
@@ -61,7 +61,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="name" label="商品名" min-width="180" />
-        <el-table-column label="品牌" min-width="140">
+        <el-table-column label="IP" min-width="140">
           <template slot-scope="s">
             <div class="brand-cell">
               <strong>{{ brandName(s.row.brandId) }}</strong>
@@ -103,11 +103,11 @@
     <el-dialog :title="editingId ? '编辑商品' : '新增商品'" :visible.sync="productDialogVisible" width="760px">
       <el-form :model="form" label-width="100px" class="product-form">
         <el-form-item label="商品名"><el-input v-model="form.name" /></el-form-item>
-        <el-form-item label="品牌">
-          <el-select v-model="form.brandId" placeholder="请选择品牌" filterable style="width:100%;">
+        <el-form-item label="IP">
+          <el-select v-model="form.brandId" placeholder="请选择 IP" filterable style="width:100%;">
             <el-option v-for="item in brands" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
-          <div class="form-tip">当前选择：{{ brandName(form.brandId) || '未选择品牌' }}</div>
+          <div class="form-tip">当前选择：{{ brandName(form.brandId) || '未选择 IP' }}</div>
         </el-form-item>
         <el-form-item label="分类">
           <el-select v-model="form.categoryId" placeholder="请选择分类" filterable style="width:100%;">
@@ -216,15 +216,15 @@
         <div class="detail-section">
           <div class="section-head">
             <div>
-              <h3>品牌信息</h3>
-              <p>商品与品牌联动展示，便于查看商品归属。</p>
+              <h3>IP 信息</h3>
+              <p>商品与 IP 联动展示，便于查看商品归属。</p>
             </div>
-            <div class="section-head__badge section-head__badge--soft">BRAND</div>
+            <div class="section-head__badge section-head__badge--soft">IP</div>
           </div>
           <div class="brand-info-card">
             <div class="brand-info-card__avatar">{{ brandName(detailProduct.brandId)?.charAt(0) || 'B' }}</div>
             <div class="brand-info-card__meta">
-              <strong>{{ brandName(detailProduct.brandId) || '未设置品牌' }}</strong>
+              <strong>{{ brandName(detailProduct.brandId) || '未设置 IP' }}</strong>
               <span>{{ brandCode(detailProduct.brandId) }}</span>
               <p>{{ brandInfo(detailProduct.brandId) }}</p>
             </div>
@@ -346,7 +346,7 @@ export default {
         { key: 'total', label: '商品总数', value: total },
         { key: 'sale', label: '上架商品', value: onSale },
         { key: 'blind', label: '盲盒商品', value: blindBox },
-        { key: 'brand', label: '关联品牌', value: brandCount }
+        { key: 'brand', label: '关联 IP', value: brandCount }
       ];
     },
     detailMetrics() {
@@ -367,7 +367,7 @@ export default {
     money(v) { const n = Number(v || 0); return Number.isNaN(n) ? '0.00' : n.toFixed(2); },
     brandName(id) { return this.brands.find(v => Number(v.id) === Number(id))?.name || '-'; },
     brandCode(id) { return this.brands.find(v => Number(v.id) === Number(id))?.initial || ''; },
-    brandInfo(id) { return this.brands.find(v => Number(v.id) === Number(id))?.description || '暂无品牌简介'; },
+    brandInfo(id) { return this.brands.find(v => Number(v.id) === Number(id))?.description || '暂无 IP 简介'; },
     categoryName(id) { return this.categories.find(v => Number(v.id) === Number(id))?.name || '-'; },
     async load() {
       this.loading = true;
@@ -443,7 +443,7 @@ export default {
     },
     async submitProduct() {
       if (!String(this.form.name || '').trim()) return this.$message.warning('请填写商品名');
-      if (!this.form.brandId) return this.$message.warning('请选择品牌');
+      if (!this.form.brandId) return this.$message.warning('请选择 IP');
       if (!this.form.categoryId) return this.$message.warning('请选择商品分类');
       if (this.form.price === null || this.form.price === undefined) return this.$message.warning('请填写商品价格');
       this.form.bannerUrls = this.bannerList.join(',');

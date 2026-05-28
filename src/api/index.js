@@ -77,8 +77,6 @@ export const api = {
   adminUserRole(id, role) { return request.put(`/admin/users/${id}/role`, null, { params: { role } }); },
   adminReviews(params) { return request.get("/admin/reviews", { params }); },
   adminReviewStatus(id, status) { return request.put(`/admin/reviews/${id}/status`, null, { params: { status } }); },
-  adminStatsOverview() { return request.get("/admin/stats/overview"); },
-  adminStatsTrend() { return request.get("/admin/stats/trend7d"); },
   homeConfig() { return request.get("/home/config"); },
   adminHomeOperationConfigs() { return request.get("/admin/home-config"); },
   adminHomeOperationConfigCreate(data) { return request.post("/admin/home-config", data); },

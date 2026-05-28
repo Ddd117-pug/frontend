@@ -4,26 +4,26 @@
       <div class="brand-hero mall-hover-lift">
         <div class="brand-logo-wrap">
           <img v-if="brand.logo" :src="resolveAssetUrl(brand.logo)" :alt="brand.name" class="brand-logo" />
-          <div v-else class="brand-logo-fallback">{{ brand.name ? brand.name.charAt(0) : 'B' }}</div>
+          <div v-else class="brand-logo-fallback">{{ brand.name ? brand.name.charAt(0) : 'I' }}</div>
         </div>
         <div class="brand-copy">
           <h1 class="brand-title">{{ brand.name }}</h1>
-          <p class="brand-subtitle">{{ brand.description || '潮玩收藏品牌' }}</p>
+          <p class="brand-subtitle">{{ brand.description || '潮玩收藏 IP' }}</p>
           <div class="brand-stats">
             <span class="brand-stat">{{ brand.productCount || 0 }} 件商品</span>
-            <span class="brand-stat brand-stat--accent">{{ brand.description || '品牌简介' }}</span>
+            <span class="brand-stat brand-stat--accent">{{ brand.description || 'IP 简介' }}</span>
           </div>
         </div>
       </div>
 
       <div class="brand-products-panel mall-hover-lift">
         <div class="panel-head">
-          <h2 class="panel-title">品牌商品</h2>
-          <el-button class="back-btn" plain @click="$router.push({ path: '/mall/brands' })">返回品牌馆</el-button>
+          <h2 class="panel-title">IP 商品</h2>
+          <el-button class="back-btn" plain @click="$router.push({ path: '/mall/brands' })">返回 IP 馆</el-button>
         </div>
 
-        <el-empty v-if="loading && !products.length" description="正在加载品牌商品" />
-        <el-empty v-else-if="!products.length" description="该品牌暂无商品" />
+        <el-empty v-if="loading && !products.length" description="正在加载 IP 商品" />
+        <el-empty v-else-if="!products.length" description="该 IP 暂无商品" />
 
         <div v-else class="product-grid">
           <article v-for="item in products" :key="item.id" class="product-card" @click="goDetail(item)">
@@ -42,7 +42,7 @@
       </div>
     </div>
 
-    <el-empty v-else description="品牌不存在或已停用" />
+    <el-empty v-else description="IP 不存在或已停用" />
   </section>
 </template>
 
