@@ -89,6 +89,7 @@
         <div class="action-row">
           <button class="action-primary" @click="addToCart">加入购物车</button>
           <button class="action-secondary" @click="buyNow">立即购买</button>
+          <button class="action-ghost" @click="openConsultationDialog">咨询商家</button>
           <button class="action-ghost" :class="{ active: isFavorite }" @click="toggleFavorite">
             {{ isFavorite ? "已收藏" : "收藏" }}
           </button>
@@ -161,6 +162,31 @@
 
     <el-empty v-else description="商品不存在或已下架" />
 
+    <el-dialog title="咨询商家" :visible.sync="consultationDialogVisible" width="520px" append-to-body>
+      <div class="consultation-dialog-body">
+        <div class="consultation-product-card">
+          <img :src="resolveAssetUrl(detail.coverUrl) || fallback" class="consultation-product-image" alt="consultation product" />
+          <div>
+            <div class="consultation-product-name">{{ detail.name }}</div>
+            <div class="consultation-product-meta">当前价格：￥{{ formatPrice(detail.price) }}</div>
+          </div>
+        </div>
+        <el-input
+          v-model="consultationContent"
+          type="textarea"
+          :rows="5"
+          maxlength="300"
+          show-word-limit
+          placeholder="请输入你想咨询商家的问题，例如：库存、发货时间、尺寸建议等"
+        />
+        <div class="consultation-tip">提交后会生成一条咨询记录，你可以在用户中心查看回复。</div>
+      </div>
+      <span slot="footer">
+        <el-button @click="consultationDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="consultationSubmitting" @click="submitConsultation">提交咨询</el-button>
+      </span>
+    </el-dialog>
+
     <el-dialog :visible.sync="previewVisible" custom-class="product-preview-dialog" width="72%" append-to-body>
       <div class="preview-stage">
         <img :src="previewImage" alt="preview" class="preview-image" />
@@ -189,6 +215,9 @@ export default {
       selectedStyleIndex: 0,
       previewVisible: false,
       previewImage: "",
+      consultationDialogVisible: false,
+      consultationSubmitting: false,
+      consultationContent: "",
       fallback: "https://dummyimage.com/720x720/f8eef2/9c96a5&text=Toy"
     };
   },
@@ -357,6 +386,26 @@ export default {
       this.isFavorite = true;
       this.$message.success("收藏成功");
     },
+    openConsultationDialog() {
+      if (!requireLogin(this, "请先登录后再咨询商家")) return;
+      this.consultationContent = "";
+      this.consultationDialogVisible = true;
+    },
+    async submitConsultation() {
+      const content = String(this.consultationContent || "").trim();
+      if (!content) {
+        return this.$message.warning("请输入咨询内容");
+      }
+      this.consultationSubmitting = true;
+      try {
+        await api.createConsultation({ productId: this.detail.id, content });
+        this.$message.success("咨询已提交，您可以在用户中心查看回复");
+        this.consultationDialogVisible = false;
+        this.consultationContent = "";
+      } finally {
+        this.consultationSubmitting = false;
+      }
+    },
     goBack() {
       if (window.history.length > 1) {
         this.$router.back();
@@ -416,12 +465,18 @@ export default {
 .quantity-row { display:flex; align-items:center; gap:12px; margin-top:20px; }
 .quantity-label { min-width:40px; }
 .stock-tip { color:#7d8497; font-size:13px; }
-.action-row { display:flex; gap:12px; margin-top:24px; }
+.action-row { display:flex; gap:12px; margin-top:24px; flex-wrap:wrap; }
 .action-primary,.action-secondary,.action-ghost { height:46px; padding:0 22px; border:none; border-radius:999px; cursor:pointer; font-size:14px; font-weight:900; }
 .action-primary { color:#fff; background:var(--mall-primary); box-shadow:0 14px 26px rgba(255, 117, 105, 0.22); }
 .action-secondary { color:#2e3345; background:#fff; border:1px solid #ececf4; }
 .action-ghost { color:#ff5f92; background:#fff3f8; border:1px solid #ffd9e5; }
 .action-ghost.active { color:#fff; background:linear-gradient(90deg, #ff5f95 0%, #ff8d48 100%); }
+.consultation-dialog-body { display:grid; gap:14px; }
+.consultation-product-card { display:flex; gap:14px; align-items:center; padding:14px 16px; border-radius:18px; background:#fff8fb; box-shadow:inset 0 0 0 1px #f3e6eb; }
+.consultation-product-image { width:68px; height:68px; border-radius:14px; object-fit:cover; background:#fff; }
+.consultation-product-name { color:#252a3d; font-size:15px; font-weight:900; }
+.consultation-product-meta { margin-top:6px; color:#7d8497; font-size:12px; }
+.consultation-tip { color:#8b93a6; font-size:12px; line-height:1.7; }
 .tab-panel { padding:8px 4px 4px; }
 .review-list { display:grid; gap:16px; }
 .review-item { padding:18px 20px; border-radius:20px; background:linear-gradient(135deg,#fff7f1 0%,#fffbfd 56%,#f2fcff 100%); box-shadow:inset 0 0 0 1px #f0ebef; }

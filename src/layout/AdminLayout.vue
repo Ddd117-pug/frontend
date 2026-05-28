@@ -23,6 +23,7 @@
         <el-menu-item index="/admin/orders"><i class="el-icon-document"></i><span>订单管理</span></el-menu-item>
         <el-menu-item index="/admin/users"><i class="el-icon-user"></i><span>用户管理</span></el-menu-item>
         <el-menu-item index="/admin/reviews"><i class="el-icon-chat-dot-round"></i><span>评价管理</span></el-menu-item>
+        <el-menu-item index="/admin/consultations"><i class="el-icon-service"></i><span>咨询管理</span></el-menu-item>
         <el-menu-item index="/admin/brands"><i class="el-icon-s-opportunity"></i><span>品牌管理</span></el-menu-item>
         <el-menu-item index="/admin/home-config"><i class="el-icon-s-platform"></i><span>首页运营</span></el-menu-item>
         <el-menu-item index="/admin/operation-logs"><i class="el-icon-s-order"></i><span>操作日志</span></el-menu-item>
@@ -30,7 +31,7 @@
 
       <div class="sidebar-footer">
         <div class="sidebar-footer__chip">版本 1.0</div>
-        <div class="sidebar-footer__hint">支持数据概览 · 商品 · 订单 · 用户 · 日志</div>
+        <div class="sidebar-footer__hint">支持数据概览 · 商品 · 订单 · 用户 · 评价 · 咨询 · 日志</div>
       </div>
     </el-aside>
 

@@ -20,6 +20,7 @@ import AdminOrders from "../views/admin/Orders.vue";
 import AdminUsers from "../views/admin/Users.vue";
 import AdminReviews from "../views/admin/Reviews.vue";
 import AdminBrands from "../views/admin/Brands.vue";
+import AdminConsultations from "../views/admin/Consultations.vue";
 import HomeConfig from "../views/admin/HomeConfig.vue";
 import OperationLogs from "../views/admin/OperationLogs.vue";
 import Register from "../views/user/Register.vue";
@@ -75,6 +76,7 @@ const router = new Router({
         { path: "orders", component: AdminOrders },
         { path: "users", component: AdminUsers },
         { path: "reviews", component: AdminReviews },
+        { path: "consultations", component: AdminConsultations },
         { path: "brands", component: AdminBrands },
         { path: "home-config", component: HomeConfig },
         { path: "operation-logs", component: OperationLogs }

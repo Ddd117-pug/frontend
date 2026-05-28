@@ -45,6 +45,7 @@
       <section class="content-card mall-hover-lift">
         <div class="content-head">
           <div><div class="content-chip">MODULE PANEL</div><h2 class="content-title">{{ currentMenuLabel }}</h2></div>
+          <el-button v-if="currentMenuKey === 'consultation'" size="mini" type="primary" plain @click="refreshConsultationModule">刷新咨询</el-button>
         </div>
 
         <div v-if="currentMenuKey === 'profile'" class="form-card">
@@ -97,6 +98,59 @@
 
         <div v-else-if="currentMenuKey === 'order'" class="module-embed module-embed-order">
           <OrdersPanel :embedded-in-user-center="true" :on-refund-click="switchToRefund" @go-refund="switchToRefund" />
+        </div>
+
+        <div v-else-if="currentMenuKey === 'consultation'" class="form-card consultation-card">
+          <div class="form-card__head">
+            <h3>我的咨询</h3>
+            <p>查看你向商家发起的咨询、未读回复和历史沟通记录，支持继续追问和关闭咨询。</p>
+          </div>
+
+          <div class="consultation-summary">
+            <div class="refund-stat">
+              <span>咨询总数</span>
+              <strong>{{ consultationSummary.total }}</strong>
+            </div>
+            <div class="refund-stat refund-stat-accent">
+              <span>待回复</span>
+              <strong>{{ consultationSummary.pending }}</strong>
+            </div>
+          </div>
+
+          <div class="consultation-toolbar">
+            <el-select v-model="consultationStatusFilter" placeholder="筛选状态" clearable @change="loadConsultations">
+              <el-option label="待回复" :value="0" />
+              <el-option label="已回复" :value="1" />
+              <el-option label="已关闭" :value="2" />
+              <el-option label="已解决" :value="3" />
+            </el-select>
+            <el-button @click="loadConsultations">刷新</el-button>
+          </div>
+
+          <el-empty v-if="!consultations.length" description="当前还没有咨询记录" />
+
+          <div v-else class="consultation-list">
+            <article v-for="item in consultations" :key="item.id" class="consultation-item">
+              <div class="consultation-item__left">
+                <img :src="resolveAssetUrl(item.productCoverUrl) || fallback" class="consultation-cover" alt="product cover" />
+                <div class="consultation-item__meta">
+                  <div class="consultation-product-name">{{ item.productName }}</div>
+                  <div class="consultation-order-no">咨询编号：{{ item.id }}</div>
+                  <div class="consultation-time">创建时间：{{ formatTime(item.createdAt) }}</div>
+                  <div class="consultation-preview">{{ item.lastMessage || '暂无消息' }}</div>
+                </div>
+              </div>
+              <div class="consultation-item__right">
+                <el-tag :type="consultationTagType(item.status)">{{ consultationStatusText(item.status) }}</el-tag>
+                <div class="consultation-counts">未读：{{ item.unreadUserCount || 0 }}</div>
+                <div class="consultation-actions">
+                  <el-button size="mini" plain @click="openConsultationDetail(item.id)">查看</el-button>
+                  <el-button size="mini" type="primary" plain @click="openConsultationReply(item)">追问</el-button>
+                  <el-button size="mini" type="danger" plain @click="closeConsultationItem(item)">关闭</el-button>
+                </div>
+              </div>
+            </article>
+          </div>
         </div>
 
         <div v-else-if="currentMenuKey === 'refund'" class="form-card refund-card">
@@ -210,6 +264,36 @@
       </span>
     </el-dialog>
 
+    <el-dialog title="咨询详情" :visible.sync="consultationDetailVisible" width="720px">
+      <div v-loading="consultationDetailLoading" class="consultation-detail-panel">
+        <template v-if="consultationDetail">
+          <div class="consultation-detail-head">
+            <div>
+              <div class="consultation-detail-title">{{ consultationDetail.product && consultationDetail.product.name }}</div>
+              <div class="consultation-detail-subtitle">咨询编号：{{ consultationDetail.consultationId }} · 状态：{{ consultationStatusText(consultationDetail.status) }}</div>
+            </div>
+            <el-button size="mini" type="primary" plain @click="openConsultationReply({ id: consultationDetail.consultationId })">继续追问</el-button>
+          </div>
+          <div class="consultation-message-list">
+            <article v-for="msg in consultationDetail.messages || []" :key="msg.id" class="consultation-message-item" :class="msg.senderType">
+              <div class="consultation-message-bubble">
+                <div class="consultation-message-meta">{{ msg.senderType === 'user' ? '我' : '商家' }} · {{ formatTime(msg.createdAt) }}</div>
+                <div class="consultation-message-content">{{ msg.content }}</div>
+              </div>
+            </article>
+          </div>
+        </template>
+      </div>
+    </el-dialog>
+
+    <el-dialog title="继续追问" :visible.sync="consultationReplyVisible" width="520px">
+      <el-input v-model="consultationReplyContent" type="textarea" :rows="5" maxlength="300" show-word-limit placeholder="请输入你要补充的问题" />
+      <span slot="footer">
+        <el-button @click="consultationReplyVisible = false">取消</el-button>
+        <el-button type="primary" :loading="consultationLoading" @click="submitConsultationReply">发送</el-button>
+      </span>
+    </el-dialog>
+
     <el-dialog title="提交售后申请" :visible.sync="afterSaleDialogVisible" width="520px">
       <div class="recharge-note">请填写本次退款原因，管理员审核后会更新售后状态。</div>
       <el-input v-model="afterSaleReason" type="textarea" :rows="4" maxlength="120" show-word-limit placeholder="例如：商品有瑕疵 / 不想要了 / 收到后与预期不符" />
@@ -223,6 +307,7 @@
 
 <script>
 import { api } from "../../api";
+import { resolveAssetUrl } from "../../utils/asset";
 import AddressesPanel from "./Addresses.vue";
 import FavoritesPanel from "./Favorites.vue";
 import OrdersPanel from "../mall/Orders.vue";
@@ -245,11 +330,12 @@ export default {
     return {
       activeMenu: "profile", profileForm: emptyProfile(), passwordForm: emptyPassword(), phoneEditable: false, cancelLoading: false, rechargeDialogVisible: false, rechargeLoading: false, rechargeAmount: "", rechargeMethod: "wechat", quickRechargeOptions: [50, 100, 200, 500], rechargeMethods: [{ value: "wechat", label: "微信支付", desc: "使用微信方式完成余额充值" }, { value: "alipay", label: "支付宝", desc: "使用支付宝方式完成余额充值" }],
       pointsDialogVisible: false, pointsExchangeLoading: false, exchangePoints: "",
+      consultations: [], consultationLoading: false, consultationStatusFilter: null, consultationSummary: { total: 0, pending: 0 }, consultationDetailVisible: false, consultationDetailLoading: false, consultationDetail: null, consultationReplyVisible: false, consultationReplyContent: "", consultationReplyTarget: null,
       afterSales: [], refundOrders: [], refundSubmittingId: null, applyingOrderId: null, afterSaleReason: "", afterSaleDialogVisible: false, currentAfterSaleOrder: null, refundOrderIdFromRoute: null,
       menus: [
         { key: "profile", label: "基本信息", icon: "👤" }, { key: "password", label: "修改密码", icon: "🔒" },
         { key: "address", label: "管理收货地址", icon: "📍" }, { key: "favorite", label: "我的收藏", icon: "💖" },
-        { key: "order", label: "我的订单", icon: "📦" }, { key: "refund", label: "售后退款", icon: "🧾" }
+        { key: "order", label: "我的订单", icon: "📦" }, { key: "consultation", label: "我的咨询", icon: "💬" }, { key: "refund", label: "售后退款", icon: "🧾" }
       ],
       profileRules: { phone: [{ validator: validatePhone, trigger: "blur" }], email: [{ required: true, message: "请输入邮箱", trigger: "blur" }], gender: [{ required: true, message: "请选择性别", trigger: "change" }] },
       passwordRules: { oldPassword: [{ required: true, message: "请输入旧密码", trigger: "blur" }], newPassword: [{ required: true, message: "请输入新密码", trigger: "blur" }, { min: 6, message: "新密码不少于 6 位", trigger: "blur" }], confirmPassword: [{ validator: validateConfirmPassword, trigger: "blur" }] }
@@ -265,6 +351,9 @@ export default {
     activeMenuLabel() { const current = this.menus.find(item => item.key === this.activeMenu); return current ? current.label : "基本信息"; },
     displayBalance() { const value = Number(this.profileForm.balance || 0); return Number.isNaN(value) ? "0.00" : value.toFixed(2); },
     displayPoints() { return Number(this.profileForm.points || 0) || 0; },
+    consultationVisibleList() {
+      return Array.isArray(this.consultations) ? this.consultations : [];
+    },
     exchangeAmountPreview() {
       const points = Number(this.exchangePoints || 0);
       if (!points || points < 0) return "0.00";
@@ -298,6 +387,7 @@ export default {
     }
   },
   methods: {
+    resolveAssetUrl,
     syncMenuFromRoute() {
       const tab = this.$route.query.tab;
       if (this.menus.some(item => item.key === tab)) {
@@ -337,8 +427,64 @@ export default {
       const res = await api.orderList({ pageNum: 1, pageSize: 50 });
       this.refundOrders = (res.records || []).filter(item => [1, 2, 3, 4].includes(Number(item.status)));
     },
+    async refreshConsultationModule() {
+      await this.loadConsultations();
+    },
     async loadAfterSales() {
       this.afterSales = (await api.myAfterSales()) || [];
+    },
+    consultationStatusText(status) {
+      return ({ 0: "待回复", 1: "已回复", 2: "已关闭", 3: "已解决" })[Number(status)] || "未知状态";
+    },
+    consultationTagType(status) {
+      return ({ 0: "warning", 1: "success", 2: "info", 3: "success" })[Number(status)] || "info";
+    },
+    formatTime(value) {
+      return value ? String(value).replace("T", " ").slice(0, 16) : "-";
+    },
+    async loadConsultations() {
+      this.consultationLoading = true;
+      try {
+        const res = await api.myConsultationPage({ status: this.consultationStatusFilter, pageNum: 1, pageSize: 50 });
+        this.consultations = (res && res.records) || [];
+        this.consultationSummary.total = Number(res && res.total) || 0;
+        this.consultationSummary.pending = this.consultations.filter(item => Number(item.status) === 0).length;
+      } finally {
+        this.consultationLoading = false;
+      }
+    },
+    refreshConsultationModule() {
+      this.loadConsultations();
+    },
+    async openConsultationDetail(id) {
+      this.consultationDetailLoading = true;
+      try {
+        const detail = await api.consultationDetail(id);
+        this.consultationDetail = detail;
+        this.consultationDetailVisible = true;
+      } finally {
+        this.consultationDetailLoading = false;
+      }
+    },
+    openConsultationReply(item) {
+      this.consultationReplyTarget = item;
+      this.consultationReplyContent = "";
+      this.consultationReplyVisible = true;
+    },
+    async submitConsultationReply() {
+      if (!this.consultationReplyTarget) return;
+      if (!String(this.consultationReplyContent || "").trim()) return this.$message.warning("请输入咨询内容");
+      await api.sendConsultationMessage(this.consultationReplyTarget.id, { content: this.consultationReplyContent.trim() });
+      this.$message.success("已发送咨询内容");
+      this.consultationReplyVisible = false;
+      this.consultationReplyTarget = null;
+      await this.loadConsultations();
+    },
+    async closeConsultationItem(item) {
+      await this.$confirm(`确认关闭咨询 #${item.id} 吗？`, "关闭咨询", { type: "warning" });
+      await api.closeConsultation(item.id);
+      this.$message.success("咨询已关闭");
+      await this.loadConsultations();
     },
     formatMoney(value) {
       const amount = Number(value || 0);
@@ -480,5 +626,5 @@ export default {
 </script>
 
 <style scoped>
-.user-center-page,.asset-panel{display:grid}.user-center-page{gap:22px}.user-hero,.sidebar-card,.content-card{position:relative;overflow:hidden;border-radius:28px;border:1px solid var(--mall-card-border);box-shadow:var(--mall-shadow)}.user-hero{display:grid;grid-template-columns:1.2fr .8fr;gap:24px;padding:30px;background:var(--mall-soft-card)}.profile-block{display:flex;align-items:center;gap:20px}.avatar-wrap{display:grid;justify-items:center;gap:12px}.avatar-circle{width:108px;height:108px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:linear-gradient(135deg,rgba(255,255,255,.95) 0%,rgba(255,242,239,.98) 100%);box-shadow:0 16px 30px rgba(255,122,92,.16);color:#ff7a5c;font-size:40px}.avatar-image{width:100%;height:100%;object-fit:cover}.hidden-file-input{display:none}.profile-chip,.content-chip{display:inline-flex;align-items:center;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.76);color:#ff6f7d;font-size:11px;font-weight:800;letter-spacing:1.5px}.profile-name,.content-title,.sidebar-title{color:var(--mall-text);font-weight:900}.profile-name{margin:16px 0 0;font-size:34px}.profile-phone{margin-top:12px;color:var(--mall-subtext)}.asset-panel{gap:14px;align-content:center}.asset-card{padding:22px;border-radius:24px;background:rgba(255,255,255,.78)}.asset-actions{margin-top:14px}.recharge-note{margin-bottom:12px;color:#8a94a6;font-size:13px;line-height:1.7}.recharge-methods{display:grid;gap:10px;margin-bottom:14px}.recharge-method{width:100%;padding:14px 16px;border:1px solid #f0dfe2;border-radius:16px;background:#fff;text-align:left;cursor:pointer;transition:all .2s ease}.recharge-method.active{border-color:#ff8d80;background:linear-gradient(135deg,rgba(255,122,92,.08) 0%,rgba(255,181,93,.12) 100%);box-shadow:0 10px 22px rgba(255,122,92,.12)}.recharge-method__title{display:block;color:#252a3d;font-size:14px;font-weight:800}.recharge-method__sub{display:block;margin-top:6px;color:#8a94a6;font-size:12px}.recharge-quick-actions{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}.asset-card strong{display:block;margin-top:10px;font-size:30px;color:var(--mall-text)}.points-panel{display:grid;gap:14px}.points-rule-card{padding:16px 18px;border-radius:18px;background:linear-gradient(135deg,#fff8f2 0%,#f3fcff 100%);border:1px solid #f0e7ea}.points-rule-title{color:#252a3d;font-weight:900;margin-bottom:8px}.points-rule-card p{margin:6px 0;color:#697386;font-size:13px;line-height:1.8}.points-current,.points-exchange-preview{color:#5d6579;font-size:14px}.points-current b{color:#252a3d;font-size:18px}.asset-card-accent{background:linear-gradient(135deg,rgba(255,122,92,.12) 0%,rgba(255,181,93,.18) 100%)}.user-center-layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:22px}.sidebar-card,.content-card{background:var(--mall-card-bg);padding:24px}.sidebar-title{margin-bottom:16px;font-size:20px}.sidebar-item{width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border:none;border-radius:18px;background:transparent;color:#5d6579;font-size:14px;font-weight:700;cursor:pointer;text-align:left}.sidebar-item+.sidebar-item{margin-top:10px}.sidebar-item.active{background:linear-gradient(90deg,#ff7a5c 0%,#ff8d80 46%,#ffb65d 100%);color:#fff}.content-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:22px}.content-title{margin:14px 0 0;font-size:30px}.form-card,.placeholder-card,.module-embed{padding:24px;border-radius:24px;background:linear-gradient(135deg,#fffaf6 0%,#fffefe 56%,#f7fbff 100%)}.form-card__head h3,.placeholder-card h3{margin:0;color:var(--mall-text);font-size:22px;font-weight:900}.form-card__head p,.placeholder-card p,.content-tip{margin:10px 0 0;color:var(--mall-subtext);font-size:13px;line-height:1.8}.rounded-form{margin-top:22px}.rounded-form :deep(.el-input__inner),.rounded-form :deep(.el-select .el-input__inner){border-radius:14px;min-height:44px;border-color:#f0dfe2;box-shadow:none}.full-width{width:100%}.inline-row{display:flex;gap:12px;align-items:center}.inline-input{flex:1}.account-danger-zone{margin-top:22px;padding:20px 22px;border-radius:22px;background:linear-gradient(135deg,rgba(255,245,245,.96) 0%,rgba(255,238,241,.98) 52%,rgba(255,247,242,.96) 100%);display:flex;align-items:center;justify-content:space-between;gap:18px}.account-danger-zone h4{margin:0;color:#b63846}.danger-btn{min-width:132px;height:42px;padding:0 18px;border:none;border-radius:999px;background:linear-gradient(90deg,#ff5f6d 0%,#ff7b66 42%,#ff9d5c 100%);color:#fff;font-weight:900;cursor:pointer}.password-card{max-width:760px}.placeholder-card{min-height:360px;display:grid;place-items:center;text-align:center}.placeholder-icon{font-size:42px}.module-embed{padding:0;background:transparent}.module-embed :deep(.card){border:none;box-shadow:none;background:transparent;padding:0}.module-embed :deep(.page-title){margin:0 0 8px!important}.refund-card{display:grid;gap:18px}.refund-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.refund-stat{padding:18px 20px;border-radius:20px;background:rgba(255,255,255,.78);box-shadow:inset 0 0 0 1px #f0e7ea}.refund-stat span{color:#8a94a6;font-size:13px}.refund-stat strong{display:block;margin-top:8px;color:#252a3d;font-size:28px;font-weight:900}.refund-stat-accent{background:linear-gradient(135deg,rgba(255,122,92,.1) 0%,rgba(255,181,93,.16) 100%)}.refund-list{display:grid;gap:14px}.refund-item{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 20px;border-radius:22px;background:linear-gradient(135deg,#fff8f3 0%,#fffcfe 56%,#f3fbff 100%);box-shadow:inset 0 0 0 1px #f0ebef}.refund-item__main{flex:1;min-width:0}.refund-item__top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.refund-order-no{color:#252a3d;font-size:16px;font-weight:900}.refund-order-time{margin-top:8px;color:#8a94a6;font-size:12px}.refund-item__meta{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;color:#616a7c;font-size:13px}.refund-item__actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}@media (max-width:1100px){.user-hero,.user-center-layout{grid-template-columns:1fr}}@media (max-width:760px){.user-hero,.sidebar-card,.content-card,.form-card,.placeholder-card,.module-embed{padding:20px;border-radius:22px}.profile-block,.content-head,.inline-row,.account-danger-zone,.refund-item,.refund-item__top{display:grid}.profile-name{font-size:28px}.content-title{font-size:26px}.refund-summary{grid-template-columns:1fr}}
+.user-center-page,.asset-panel{display:grid}.user-center-page{gap:22px}.user-hero,.sidebar-card,.content-card{position:relative;overflow:hidden;border-radius:28px;border:1px solid var(--mall-card-border);box-shadow:var(--mall-shadow)}.user-hero{display:grid;grid-template-columns:1.2fr .8fr;gap:24px;padding:30px;background:var(--mall-soft-card)}.profile-block{display:flex;align-items:center;gap:20px}.avatar-wrap{display:grid;justify-items:center;gap:12px}.avatar-circle{width:108px;height:108px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:linear-gradient(135deg,rgba(255,255,255,.95) 0%,rgba(255,242,239,.98) 100%);box-shadow:0 16px 30px rgba(255,122,92,.16);color:#ff7a5c;font-size:40px}.avatar-image{width:100%;height:100%;object-fit:cover}.hidden-file-input{display:none}.profile-chip,.content-chip{display:inline-flex;align-items:center;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.76);color:#ff6f7d;font-size:11px;font-weight:800;letter-spacing:1.5px}.profile-name,.content-title,.sidebar-title{color:var(--mall-text);font-weight:900}.profile-name{margin:16px 0 0;font-size:34px}.profile-phone{margin-top:12px;color:var(--mall-subtext)}.asset-panel{gap:14px;align-content:center}.asset-card{padding:22px;border-radius:24px;background:rgba(255,255,255,.78)}.asset-actions{margin-top:14px}.recharge-note{margin-bottom:12px;color:#8a94a6;font-size:13px;line-height:1.7}.recharge-methods{display:grid;gap:10px;margin-bottom:14px}.recharge-method{width:100%;padding:14px 16px;border:1px solid #f0dfe2;border-radius:16px;background:#fff;text-align:left;cursor:pointer;transition:all .2s ease}.recharge-method.active{border-color:#ff8d80;background:linear-gradient(135deg,rgba(255,122,92,.08) 0%,rgba(255,181,93,.12) 100%);box-shadow:0 10px 22px rgba(255,122,92,.12)}.recharge-method__title{display:block;color:#252a3d;font-size:14px;font-weight:800}.recharge-method__sub{display:block;margin-top:6px;color:#8a94a6;font-size:12px}.recharge-quick-actions{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}.asset-card strong{display:block;margin-top:10px;font-size:30px;color:var(--mall-text)}.points-panel{display:grid;gap:14px}.points-rule-card{padding:16px 18px;border-radius:18px;background:linear-gradient(135deg,#fff8f2 0%,#f3fcff 100%);border:1px solid #f0e7ea}.points-rule-title{color:#252a3d;font-weight:900;margin-bottom:8px}.points-rule-card p{margin:6px 0;color:#697386;font-size:13px;line-height:1.8}.points-current,.points-exchange-preview{color:#5d6579;font-size:14px}.points-current b{color:#252a3d;font-size:18px}.asset-card-accent{background:linear-gradient(135deg,rgba(255,122,92,.12) 0%,rgba(255,181,93,.18) 100%)}.user-center-layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:22px}.sidebar-card,.content-card{background:var(--mall-card-bg);padding:24px}.sidebar-title{margin-bottom:16px;font-size:20px}.sidebar-item{width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border:none;border-radius:18px;background:transparent;color:#5d6579;font-size:14px;font-weight:700;cursor:pointer;text-align:left}.sidebar-item+.sidebar-item{margin-top:10px}.sidebar-item.active{background:linear-gradient(90deg,#ff7a5c 0%,#ff8d80 46%,#ffb65d 100%);color:#fff}.content-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:22px}.content-title{margin:14px 0 0;font-size:30px}.form-card,.placeholder-card,.module-embed{padding:24px;border-radius:24px;background:linear-gradient(135deg,#fffaf6 0%,#fffefe 56%,#f7fbff 100%)}.form-card__head h3,.placeholder-card h3{margin:0;color:var(--mall-text);font-size:22px;font-weight:900}.form-card__head p,.placeholder-card p,.content-tip{margin:10px 0 0;color:var(--mall-subtext);font-size:13px;line-height:1.8}.rounded-form{margin-top:22px}.rounded-form :deep(.el-input__inner),.rounded-form :deep(.el-select .el-input__inner){border-radius:14px;min-height:44px;border-color:#f0dfe2;box-shadow:none}.full-width{width:100%}.inline-row{display:flex;gap:12px;align-items:center}.inline-input{flex:1}.account-danger-zone{margin-top:22px;padding:20px 22px;border-radius:22px;background:linear-gradient(135deg,rgba(255,245,245,.96) 0%,rgba(255,238,241,.98) 52%,rgba(255,247,242,.96) 100%);display:flex;align-items:center;justify-content:space-between;gap:18px}.account-danger-zone h4{margin:0;color:#b63846}.danger-btn{min-width:132px;height:42px;padding:0 18px;border:none;border-radius:999px;background:linear-gradient(90deg,#ff5f6d 0%,#ff7b66 42%,#ff9d5c 100%);color:#fff;font-weight:900;cursor:pointer}.password-card{max-width:760px}.placeholder-card{min-height:360px;display:grid;place-items:center;text-align:center}.placeholder-icon{font-size:42px}.module-embed{padding:0;background:transparent}.module-embed :deep(.card){border:none;box-shadow:none;background:transparent;padding:0}.module-embed :deep(.page-title){margin:0 0 8px!important}.refund-card{display:grid;gap:18px}.refund-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.refund-stat{padding:18px 20px;border-radius:20px;background:rgba(255,255,255,.78);box-shadow:inset 0 0 0 1px #f0e7ea}.refund-stat span{color:#8a94a6;font-size:13px}.refund-stat strong{display:block;margin-top:8px;color:#252a3d;font-size:28px;font-weight:900}.refund-stat-accent{background:linear-gradient(135deg,rgba(255,122,92,.1) 0%,rgba(255,181,93,.16) 100%)}.refund-list{display:grid;gap:14px}.refund-item{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 20px;border-radius:22px;background:linear-gradient(135deg,#fff8f3 0%,#fffcfe 56%,#f3fbff 100%);box-shadow:inset 0 0 0 1px #f0ebef}.refund-item__main{flex:1;min-width:0}.refund-item__top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.refund-order-no{color:#252a3d;font-size:16px;font-weight:900}.refund-order-time{margin-top:8px;color:#8a94a6;font-size:12px}.refund-item__meta{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;color:#616a7c;font-size:13px}.refund-item__actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}.consultation-card{display:grid;gap:18px}.consultation-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.consultation-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.consultation-list{display:grid;gap:14px}.consultation-item{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 20px;border-radius:22px;background:linear-gradient(135deg,#fff8f3 0%,#fffcfe 56%,#f3fbff 100%);box-shadow:inset 0 0 0 1px #f0ebef}.consultation-item__left{display:flex;gap:14px;align-items:flex-start;flex:1;min-width:0}.consultation-cover{width:72px;height:72px;border-radius:16px;object-fit:cover;background:#fff;box-shadow:0 10px 24px rgba(31,34,51,.08)}.consultation-item__meta{min-width:0}.consultation-product-name{color:#252a3d;font-size:16px;font-weight:900}.consultation-order-no,.consultation-time{margin-top:6px;color:#8a94a6;font-size:12px}.consultation-preview{margin-top:10px;color:#616a7c;font-size:13px;line-height:1.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:520px}.consultation-item__right{display:grid;justify-items:end;gap:10px}.consultation-counts{color:#616a7c;font-size:13px}.consultation-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}.consultation-detail-panel{min-height:260px}.consultation-detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}.consultation-detail-title{font-size:18px;font-weight:900;color:#252a3d}.consultation-detail-subtitle{margin-top:6px;color:#8a94a6;font-size:12px}.consultation-message-list{display:grid;gap:12px;max-height:420px;overflow:auto;padding-right:4px}.consultation-message-item{display:flex}.consultation-message-item.user{justify-content:flex-end}.consultation-message-item.admin{justify-content:flex-start}.consultation-message-bubble{max-width:78%;padding:12px 14px;border-radius:16px;background:#fff;box-shadow:inset 0 0 0 1px #f0ebef}.consultation-message-item.user .consultation-message-bubble{background:linear-gradient(135deg,#fff1f5 0%,#ffffff 100%)}.consultation-message-meta{color:#8a94a6;font-size:11px}.consultation-message-content{margin-top:6px;color:#252a3d;font-size:13px;line-height:1.8;white-space:pre-wrap}@media (max-width:1100px){.user-hero,.user-center-layout{grid-template-columns:1fr}.consultation-summary{grid-template-columns:1fr}.consultation-item{flex-direction:column;align-items:flex-start}.consultation-item__right{justify-items:flex-start;width:100%}.consultation-preview{max-width:none}}@media (max-width:760px){.user-hero,.sidebar-card,.content-card,.form-card,.placeholder-card,.module-embed{padding:20px;border-radius:22px}.profile-block,.content-head,.inline-row,.account-danger-zone,.refund-item,.refund-item__top{display:grid}.profile-name{font-size:28px}.content-title{font-size:26px}.refund-summary{grid-template-columns:1fr}.consultation-message-bubble{max-width:100%}}
 </style>
