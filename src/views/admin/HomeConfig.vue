@@ -5,7 +5,7 @@
         <div>
           <div class="hero-badge">HOME OPS</div>
           <h2 class="hero-title">首页运营配置</h2>
-          <p class="hero-desc">管理首页 Banner、推荐位和专题入口，支持图片上传、排序调整、状态切换与快速复制，满足本科毕设对后台管理系统的完整性要求。</p>
+          <p class="hero-desc">管理首页 Banner、推荐位和专题入口，支持图片上传、排序调整、状态切换与快速复制。</p>
         </div>
         <div class="hero-actions">
           <el-button plain :loading="loadingSeed" @click="seedDemo">生成示例数据</el-button>

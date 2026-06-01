@@ -287,16 +287,38 @@ export default {
     async loadDetail() {
       this.loading = true;
       try {
-        const tasks = [api.productDetail(this.$route.params.id), api.reviewList(this.$route.params.id), api.categories()];
-        if (this.$store.getters.isLogin) {
-          tasks.push(api.favoriteList());
+        const productId = this.$route.params.id;
+        const [detailRes, reviewsRes, categoriesRes, favoritesRes] = await Promise.allSettled([
+          api.productDetail(productId),
+          api.reviewList(productId),
+          api.categories(),
+          this.$store.getters.isLogin ? api.favoriteList() : Promise.resolve([])
+        ]);
+
+        const detail = detailRes.status === "fulfilled" ? (detailRes.value || {}) : {};
+        const reviews = reviewsRes.status === "fulfilled" ? (reviewsRes.value || []) : [];
+        const categories = categoriesRes.status === "fulfilled" ? (categoriesRes.value || []) : [];
+        const favorites = favoritesRes.status === "fulfilled" ? (favoritesRes.value || []) : [];
+
+        if (detailRes.status === "rejected") {
+          console.error("加载商品详情失败", detailRes.reason);
+          this.$message.error("商品详情加载失败，请稍后重试");
         }
-        const [detail, reviews = [], categories = [], favorites = []] = await Promise.all(tasks);
+        if (reviewsRes.status === "rejected") {
+          console.error("加载商品评价失败", reviewsRes.reason);
+        }
+        if (categoriesRes.status === "rejected") {
+          console.error("加载商品分类失败", categoriesRes.reason);
+        }
+        if (favoritesRes.status === "rejected") {
+          console.error("加载收藏列表失败", favoritesRes.reason);
+        }
+
         this.detail = detail || {};
         this.categories = Array.isArray(categories) ? categories : [];
         this.activeImage = (detail && (resolveAssetUrl(detail.coverUrl) || String(detail.bannerUrls || "").split(",").map(item => resolveAssetUrl(item.trim())).find(Boolean))) || this.fallback;
-        this.reviews = (reviews || []).filter(item => item.status !== 0);
-        this.isFavorite = (favorites || []).some(item => item.id === Number(this.$route.params.id));
+        this.reviews = (Array.isArray(reviews) ? reviews : []).filter(item => item.status !== 0);
+        this.isFavorite = (Array.isArray(favorites) ? favorites : []).some(item => item.id === Number(productId));
         this.activeTab = "reviews";
         this.buyCount = 1;
         this.selectedStyleIndex = 0;

@@ -135,9 +135,10 @@ export default {
         background: item.style.backgroundImage || DEFAULT_SLIDES[index % DEFAULT_SLIDES.length].background,
         image: item.imageUrl ? this.resolveImage(item.imageUrl) : DEFAULT_SLIDES[index % DEFAULT_SLIDES.length].image,
         imageClass: "focus-center",
-        buttonText: item.targetType === "url" ? "立即查看" : "去逛逛",
+        buttonText: item.targetType === "url" ? "立即查看" : "立即抢购",
         actionType: item.targetType || "route",
-        targetUrl: item.targetValue || item.linkUrl || "",
+        targetValue: item.targetValue || item.linkUrl || "",
+        targetUrl: item.linkUrl || item.targetValue || "",
         targetNames: item.targetValue ? [item.targetValue] : []
       }));
       return configs.length ? configs : DEFAULT_SLIDES;
@@ -273,27 +274,37 @@ export default {
       this.goProducts();
     },
     handleSlideAction(slide) {
-      if (slide.actionType === "product" && slide.targetUrl) {
-        this.$router.push(`/mall/product/${slide.targetUrl}`);
+      const productId = slide?.targetValue || slide?.targetUrl || "";
+      const targetRoute = slide?.targetRoute || slide?.route || "";
+
+      console.log("[HomeHeroCarousel] slide action payload", slide);
+
+      if (slide?.actionType === "url" && productId) {
+        if (/^https?:\/\//i.test(productId)) {
+          window.open(productId, "_blank");
+        } else {
+          this.$router.push(productId);
+        }
         return;
       }
-      if (slide.actionType === "brand" && slide.targetUrl) {
-        this.goBrandById(slide.targetUrl);
+
+      if (slide?.actionType === "product" && productId) {
+        console.log("[HomeHeroCarousel] resolved productId", productId);
+        this.$router.push(`/mall/product/${productId}`);
         return;
       }
-      if (slide.actionType === "category" && slide.targetUrl) {
-        this.goCategoryById(Number(slide.targetUrl));
+
+      if (slide?.actionType === "route" && targetRoute) {
+        this.$router.push(targetRoute);
         return;
       }
-      if (slide.actionType === "url" && slide.targetUrl) {
-        if (/^https?:\/\//i.test(slide.targetUrl)) window.open(slide.targetUrl, "_blank");
-        else this.$router.push(slide.targetUrl);
+
+      if (productId) {
+        console.log("[HomeHeroCarousel] fallback productId", productId);
+        this.$router.push(`/mall/product/${productId}`);
         return;
       }
-      if (slide.actionType === "route" && slide.targetUrl) {
-        this.$router.push(slide.targetUrl);
-        return;
-      }
+
       this.goProducts();
     },
     handleConfigClick(item) {
